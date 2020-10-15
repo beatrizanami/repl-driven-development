@@ -29,11 +29,29 @@
 
 (def types (set (map :primary-volcano-type volcano-records)))
 
+(defn parse-eruption-date [date]
+  (if (= "Unknown" date)
+    nil
+    (let [[_ y e] (re-matches #"(\d+) (.+)" date)]
+      (cond
+        (= e "BCE")
+        (- (Integer/parseInt y))
+        (= e "CE")
+        (Integer/parseInt y)
+        :else
+        (throw (ex-info "Could not parse year." {:year date}))))))
+
+(defn slash->set [s]
+  (set (map str/trim (str/split s #"/"))))
+
 (defn parse-numbers [volcano]
   (-> volcano
       (update :elevation #(Integer/parseInt %))
       (update :longitude #(Double/parseDouble %))
-      (update :latitude #(Double/parseDouble %))))
+      (update :latitude #(Double/parseDouble %))
+      (assoc :last-eruption-parsed (parse-eruption-date (:last-known-eruption volcano)))
+      (update :tectonic-setting slash->set)
+      (update :dominant-rock-type slash->set)))
 
 (def volcanoes-parsed
   (map parse-numbers volcano-records))
@@ -47,7 +65,4 @@
 
   (clojure.pprint/print-table
     (map #(select-keys % [:volcano-name :country]) volcanoes-parsed)))
-
-
-
 
